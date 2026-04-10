@@ -151,8 +151,9 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
 .ac-item .ac-name{font-weight:500;color:var(--dtext)}
 .ac-item .ac-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0}
 
-/* drag handle — desktop hidden */
-#drag-handle{display:none}
+/* mob-marquee-btn hidden on desktop */
+#mob-marquee-btn{display:none}
+.mob-marquee-active{background:rgba(107,70,193,.18)!important;border-color:var(--acc)!important;color:var(--acc)!important}
 
 /* ── MOBILE ── */
 @media(max-width:680px){
@@ -184,7 +185,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
   }
   #drag-pill{width:40px;height:4px;border-radius:2px;background:var(--dbord2)}
   #sb-scroll{flex:1;overflow-y:auto;padding:10px 12px;min-height:0}
-  /* detail is inline in sb-scroll — no special mobile positioning needed */
+  /* When editing: hide nav, show only edit panel */
+  #sb.sb-editing #sb-scroll>.ss,
+  #sb.sb-editing #sb-scroll>div.ss{display:none}
+  #sb.sb-editing #detail{display:block!important}
+  #mob-marquee-btn{display:flex}
+  /* Bigger delete button on touch */
+  .delbtn{width:26px;height:26px;font-size:14px;top:-10px;left:-10px}
   .icon-btn{width:38px;height:38px}
   .node{touch-action:none}
 }
@@ -244,7 +251,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
   <button class="icon-btn" onclick="document.getElementById('load-input').click()" title="Load map (.gmap)">
     <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 11 15 14"/></svg>
   </button>
-  <input type="file" id="load-input" accept=".gmap,.json" style="display:none" onchange="loadMap(this)">
+  <input type="file" id="load-input" accept=".gmap,.json,application/json,text/plain" style="display:none" onchange="loadMap(this)">
   <!-- PDF Export -->
   <button class="icon-btn" onclick="exportPDF()" title="Export as PDF">
     <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -256,6 +263,10 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
   <!-- Note -->
   <button class="icon-btn" id="note-btn" onclick="startNoteMode()" title="Draw a note (drag to create)">
     <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none"/><polyline points="14 2 14 8 20 8" fill="none"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
+  </button>
+  <!-- Marquee select — mobile only -->
+  <button class="icon-btn" id="mob-marquee-btn" onclick="toggleMobMarquee()" title="Select area" style="display:none">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4,2.5" fill="none"/><polyline points="9 9 9 15 15 15"/></svg>
   </button>
   </div>
   <div class="sep"></div>
@@ -476,6 +487,14 @@ function toggleSidebar(){
 }
 function toggleMobileSidebar(){ toggleSidebar(); }
 
+var _mobMarqueeMode=false;
+function toggleMobMarquee(){
+  _mobMarqueeMode=!_mobMarqueeMode;
+  var btn=document.getElementById('mob-marquee-btn');
+  if(btn) btn.classList.toggle('mob-marquee-active',_mobMarqueeMode);
+  if(_mobMarqueeMode) showToast('Drag to select — tap button again to cancel');
+}
+
 // ── DRAG HANDLE (mobile) ──
 (function(){
   var handle=document.getElementById('drag-handle');
@@ -554,146 +573,6 @@ function toggleMobileSidebar(){ toggleSidebar(); }
   },{passive:true});
 })();
 
-// ── TOUCH EVENTS: pan, pinch-zoom, tap, double-tap, long-press ──
-// Translates touch gestures into the same actions as mouse events
-(function(){
-  var _t1=null, _t2=null; // active touch points
-  var _pinchDist0=null, _pinchSc0=null, _pinchPx0=null, _pinchPy0=null;
-  var _panSt=null; // {x,y,px,py} — start of 1-finger pan
-  var _tapTimer=null, _lastTap=0, _tapTarget=null;
-  var _longTimer=null;
-  var _moved=false;
-
-  function touchDist(a,b){ return Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY); }
-  function touchMid(a,b){ return {x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2}; }
-
-  wrap.addEventListener('touchstart',function(e){
-    e.preventDefault();
-    var touches=e.touches;
-    _moved=false;
-
-    if(touches.length===1){
-      _t1=touches[0];
-      _t2=null;
-      _panSt=null;
-      _pinchDist0=null;
-      _tapTarget=e.target;
-
-      // Long-press → delete (600ms)
-      clearTimeout(_longTimer);
-      _longTimer=setTimeout(function(){
-        if(!_moved){
-          var node=_tapTarget&&_tapTarget.closest&&_tapTarget.closest('.node');
-          if(node&&nodes[node.id]){ snapshotForUndo(); delNode(node.id); }
-        }
-      },600);
-
-    } else if(touches.length===2){
-      clearTimeout(_longTimer);
-      _t1=touches[0]; _t2=touches[1];
-      _pinchDist0=touchDist(_t1,_t2);
-      _pinchSc0=sc;
-      var mid=touchMid(_t1,_t2);
-      var r=wrap.getBoundingClientRect();
-      _pinchPx0={mx:mid.x-r.left, my:mid.y-r.top, px:px, py:py};
-      _panSt=null;
-    }
-  },{passive:false});
-
-  wrap.addEventListener('touchmove',function(e){
-    e.preventDefault();
-    var touches=e.touches;
-
-    if(touches.length===2 && _pinchDist0!==null){
-      // Pinch-to-zoom
-      _moved=true;
-      clearTimeout(_longTimer);
-      var dist=touchDist(touches[0],touches[1]);
-      var mid=touchMid(touches[0],touches[1]);
-      var r=wrap.getBoundingClientRect();
-      var mx=mid.x-r.left, my=mid.y-r.top;
-      var ns=Math.min(3,Math.max(.12, _pinchSc0*(dist/_pinchDist0)));
-      px=mx-(mx-_pinchPx0.px)*(ns/_pinchSc0);
-      py=my-(my-_pinchPx0.py)*(ns/_pinchSc0);
-      sc=ns; applyT();
-
-    } else if(touches.length===1 && _t1!==null){
-      var t=touches[0];
-      var dx=t.clientX-_t1.clientX, dy=t.clientY-_t1.clientY;
-      if(Math.abs(dx)>4||Math.abs(dy)>4){ _moved=true; clearTimeout(_longTimer); }
-
-      // Is finger on a node? → drag node
-      var node=_tapTarget&&_tapTarget.closest&&_tapTarget.closest('.node');
-      if(node&&nodes[node.id]&&_moved){
-        if(!_panSt){ // init node drag
-          var c=toC(_t1.clientX,_t1.clientY);
-          _panSt={nodeDrag:true, nodeId:node.id, offX:c.x-nodes[node.id].x, offY:c.y-nodes[node.id].y};
-        }
-        var c2=toC(t.clientX,t.clientY);
-        nodes[node.id].x=c2.x-_panSt.offX;
-        nodes[node.id].y=c2.y-_panSt.offY;
-        var el=document.getElementById(node.id);
-        if(el){el.style.left=nodes[node.id].x+'px';el.style.top=nodes[node.id].y+'px';}
-        redrawArrows();
-      } else if(!node&&_moved){
-        // Pan canvas
-        if(!_panSt){ _panSt={canvasPan:true, x:_t1.clientX, y:_t1.clientY, px:px, py:py}; }
-        px=_panSt.px+(t.clientX-_panSt.x);
-        py=_panSt.py+(t.clientY-_panSt.y);
-        applyT();
-      }
-      _t1=t;
-    }
-  },{passive:false});
-
-  wrap.addEventListener('touchend',function(e){
-    e.preventDefault();
-    clearTimeout(_longTimer);
-
-    if(!_moved && _tapTarget){
-      var now=Date.now();
-      var node=_tapTarget.closest&&_tapTarget.closest('.node');
-      var isCanvas=!node&&(_tapTarget===wrap||_tapTarget===canvas||_tapTarget.id==='dotbg');
-
-      if(node){
-        // Double-tap → open detail panel
-        if(now-_lastTap<350&&_tapTarget===_tapTarget){
-          _lastTap=0; clearTimeout(_tapTimer);
-          disarm(); selNode(node.id);
-          // Open sidebar on mobile
-          var sb=document.getElementById('sb');
-          if(sb&&!sb.classList.contains('mobile-open')) toggleMobileSidebar();
-        } else {
-          // Single tap → arm/connect
-          _lastTap=now;
-          clearTimeout(_tapTimer);
-          _tapTimer=setTimeout(function(){
-            if(armed && armed!==node.id){ snapshotForUndo(); addArrow(armed,node.id); disarm(); }
-            else if(armed===node.id){ disarm(); }
-            else { arm(node.id); }
-          },200);
-        }
-      } else if(isCanvas){
-        // Double-tap canvas → add node
-        if(now-_lastTap<350){
-          _lastTap=0; clearTimeout(_tapTimer);
-          if(_t1){
-            snapshotForUndo();
-            var c=toC(_t1.clientX,_t1.clientY);
-            addNode(c.x-95,c.y-55);
-          }
-          disarm();
-        } else {
-          _lastTap=now;
-          if(armed){ clearTimeout(_tapTimer); _tapTimer=setTimeout(function(){disarm();},200); }
-        }
-      }
-    }
-
-    if(e.touches.length===0){ _t1=null; _t2=null; _pinchDist0=null; _panSt=null; }
-    else if(e.touches.length===1){ _t2=null; _pinchDist0=null; }
-  },{passive:false});
-})();
 // Called from scroll-shield overlay on playing video nodes
 function canvasWheel(e){
   e.preventDefault();
@@ -1478,7 +1357,12 @@ function selNode(id){
   document.getElementById(id).classList.add('sel'); selId=id;
   openDetail(id);
 }
-function desel(){document.querySelectorAll('.node.sel').forEach(function(n){n.classList.remove('sel');});selId=null;document.getElementById('detail').classList.remove('on');}
+function desel(){
+  document.querySelectorAll('.node.sel').forEach(function(n){n.classList.remove('sel');});
+  selId=null;
+  document.getElementById('detail').classList.remove('on');
+  document.getElementById('sb').classList.remove('sb-editing');
+}
 function clearMsel(){
   msel.forEach(function(id){var el=document.getElementById(id);if(el)el.classList.remove('msel');});
   msel.clear();
@@ -1501,21 +1385,6 @@ function openDetail(id){
   var vp=document.getElementById('vpreview');
   if(ytId){vp.style.display='block';vp.style.backgroundImage='url(\'https://img.youtube.com/vi/'+ytId+'/mqdefault.jpg\')';vp.onclick=function(){window.open(n.url,'_blank');};}
   else{vp.style.display='none';vp.onclick=null;}
-  // On mobile: open sidebar and scroll straight to edit panel
-  if(window.matchMedia('(max-width:680px)').matches){
-    var sb=document.getElementById('sb');
-    if(sb&&!sb.classList.contains('sb-open')){
-      var MAX_H=window.innerHeight*0.65;
-      sb.style.transition='height .3s cubic-bezier(.4,0,.2,1)';
-      sb.style.height=MAX_H+'px';
-      sb.classList.add('sb-open');
-    }
-    setTimeout(function(){
-      var detail=document.getElementById('detail');
-      var scroll=document.getElementById('sb-scroll');
-      if(detail&&scroll) scroll.scrollTop=detail.offsetTop-8;
-    },50);
-  }
 }
 function updN(field,val){
   if(!selId) return; nodes[selId][field]=val;
@@ -3093,8 +2962,10 @@ var TMPLS={
   },
 };
 function loadTmpl(name){
-  clearAll();
   var T=TMPLS[name]; if(!T) return;
+  var hasContent=Object.keys(nodes).length>0;
+  if(hasContent&&!confirm('Load "'+T.title+'"?\nThis will replace everything on the canvas.')){return;}
+  clearAll();
   document.getElementById('ftitle').value=T.title;
   nid=Math.max.apply(null,[0].concat(T.nodes.map(function(n){return parseInt(n.id.slice(1));})));
   T.nodes.forEach(function(nd){
@@ -3144,15 +3015,43 @@ function loadTmpl(name){
 // ── MOBILE: Sidebar toggle ──
 // ── TOUCH: pan, pinch-zoom, tap, double-tap, long-press ──
 (function(){
-  var _lastTap=0, _pinchDist=null;
+  var _lastTap=0, _lastTapTarget=null, _pinchDist=null;
   var _touchDragId=null, _touchDragOff={x:0,y:0}, _touchDragging=false;
-  var _touchPanSt=null;
-  var _longPressTimer=null;
+  var _touchPanSt=null, _panMoved=false;
+  var _longPressTimer=null, _longPressFired=false;
 
   function tdist(t1,t2){ return Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY); }
 
+  function openEditPanel(id){
+    selNode(id); // marks detail.on
+    var sb=document.getElementById('sb');
+    if(!sb) return;
+    sb.classList.add('sb-editing');
+    if(!sb.classList.contains('sb-open')){
+      var MAX_H=window.innerHeight*0.65;
+      sb.style.transition='height .3s cubic-bezier(.4,0,.2,1)';
+      sb.style.height=MAX_H+'px';
+      sb.classList.add('sb-open');
+    }
+  }
+
+  function scrollToDetail(){} // no longer needed
+
+  function closeEditPanel(){
+    desel();
+    disarm();
+    var sb=document.getElementById('sb');
+    if(sb){
+      sb.classList.remove('sb-editing');
+      sb.style.transition='height .3s cubic-bezier(.4,0,.2,1)';
+      sb.style.height='40px';
+      sb.classList.remove('sb-open');
+    }
+  }
+
   wrap.addEventListener('touchstart',function(e){
     clearTimeout(_longPressTimer);
+    _longPressFired=false;
     var ts=e.touches;
     if(ts.length===2){
       _pinchDist=tdist(ts[0],ts[1]); e.preventDefault(); return;
@@ -3160,11 +3059,18 @@ function loadTmpl(name){
     if(ts.length!==1) return;
     var t=ts[0], now=Date.now();
 
-    // Double-tap → add node
+    var tgt=document.elementFromPoint(t.clientX,t.clientY);
+    var nodeDiv=tgt&&tgt.closest('.node');
+
+    // Double-tap detection
     if(now-_lastTap<320){
       _lastTap=0;
-      var tgt=document.elementFromPoint(t.clientX,t.clientY);
-      if(tgt&&!tgt.closest('.node')&&!tgt.closest('.note-el')){
+      if(nodeDiv&&nodes[nodeDiv.id]){
+        // Double-tap node → delete it
+        snapshotForUndo();
+        delNode(nodeDiv.id);
+      } else if(tgt&&!tgt.closest('.note-el')){
+        // Double-tap canvas → add node
         snapshotForUndo();
         var c=toC(t.clientX,t.clientY);
         addNode(c.x-95,c.y-55);
@@ -3172,26 +3078,32 @@ function loadTmpl(name){
       e.preventDefault(); return;
     }
     _lastTap=now;
+    _lastTapTarget=nodeDiv?nodeDiv.id:null;
 
-    var nodeEl=document.elementFromPoint(t.clientX,t.clientY);
-    var nodeDiv=nodeEl&&nodeEl.closest('.node');
     if(nodeDiv&&nodes[nodeDiv.id]){
       var id=nodeDiv.id;
       var c=toC(t.clientX,t.clientY);
       _touchDragId=id;
       _touchDragOff={x:c.x-nodes[id].x, y:c.y-nodes[id].y};
       _touchDragging=false;
-      // Long-press → open detail
+      // Long-press → open edit panel
       _longPressTimer=setTimeout(function(){
+        _longPressFired=true;
         _touchDragId=null;
-        selNode(id);
-        var sb=document.getElementById('sb');
-        if(sb&&sb.classList.contains('sb-open')) toggleSidebar();
+        openEditPanel(id);
       },500);
       e.preventDefault(); return;
     }
-    // Canvas pan
+
+    // Canvas pan or marquee start
     _touchPanSt={x:t.clientX,y:t.clientY,px:px,py:py};
+    _panMoved=false;
+    if(_mobMarqueeMode){
+      // Start marquee at canvas coords
+      var c=toC(t.clientX,t.clientY);
+      mqSt={x:c.x,y:c.y}; mqOn=true;
+      clearMsel(); desel();
+    }
     e.preventDefault();
   },{passive:false});
 
@@ -3222,9 +3134,24 @@ function loadTmpl(name){
       return;
     }
     if(_touchPanSt){
-      px=_touchPanSt.px+(t.clientX-_touchPanSt.x);
-      py=_touchPanSt.py+(t.clientY-_touchPanSt.y);
-      applyT();
+      var dx=t.clientX-_touchPanSt.x, dy=t.clientY-_touchPanSt.y;
+      if(Math.hypot(dx,dy)>4) _panMoved=true;
+      if(_mobMarqueeMode&&mqOn&&mqSt){
+        // Draw marquee
+        var c=toC(t.clientX,t.clientY);
+        var mx=Math.min(mqSt.x,c.x), my=Math.min(mqSt.y,c.y);
+        var mw=Math.abs(c.x-mqSt.x), mh=Math.abs(c.y-mqSt.y);
+        var mq=document.getElementById('marquee');
+        mq.style.cssText='display:block;left:'+(mx*sc+px)+'px;top:'+(my*sc+py)+'px;width:'+(mw*sc)+'px;height:'+(mh*sc)+'px';
+        Object.keys(nodes).forEach(function(id){
+          var n=nodes[id];
+          document.getElementById(id).classList.toggle('msel',n.x+190>mx&&n.x<mx+mw&&n.y+(n.h||120)>my&&n.y<my+mh);
+        });
+      } else {
+        px=_touchPanSt.px+dx;
+        py=_touchPanSt.py+dy;
+        applyT();
+      }
     }
   },{passive:false});
 
@@ -3232,15 +3159,41 @@ function loadTmpl(name){
     clearTimeout(_longPressTimer);
     _pinchDist=null;
     if(_touchDragId){
-      if(!_touchDragging){
+      if(!_touchDragging&&!_longPressFired){
+        // Single tap on node
         var id=_touchDragId;
         if(armed&&armed!==id){ snapshotForUndo(); addArrow(armed,id); disarm(); }
         else if(armed===id){ disarm(); }
         else { arm(id); }
-      } else { autoSave(); }
+      } else if(_touchDragging){
+        autoSave();
+      }
       _touchDragId=null; _touchDragging=false;
+      _touchPanSt=null; _panMoved=false;
+      return;
     }
-    _touchPanSt=null;
+    // Single tap on empty canvas → deselect + close edit
+    if(_touchPanSt&&!_panMoved&&!_longPressFired){
+      closeEditPanel();
+    }
+    // Commit marquee if active
+    if(_mobMarqueeMode&&mqOn){
+      document.getElementById('marquee').style.display='none';
+      msel.clear();
+      Object.keys(nodes).forEach(function(id){if(document.getElementById(id).classList.contains('msel'))msel.add(id);});
+      mqOn=false; mqSt=null;
+      if(msel.size>0){
+        var b=document.getElementById('badge');
+        document.getElementById('badge-txt').textContent=msel.size+' node'+(msel.size>1?'s':'')+' selected';
+        b.style.display='flex';
+      }
+      // Exit marquee mode after selection
+      _mobMarqueeMode=false;
+      var btn=document.getElementById('mob-marquee-btn');
+      if(btn) btn.classList.remove('mob-marquee-active');
+    }
+    _longPressFired=false;
+    _touchPanSt=null; _panMoved=false;
   },{passive:false});
 })();
 </script>
