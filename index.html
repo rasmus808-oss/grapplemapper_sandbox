@@ -132,7 +132,6 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
 .note-el .note-drag-bar svg{opacity:.35;flex-shrink:0}
 .note-el .note-body{padding:6px 8px;font-size:11px;line-height:1.55;color:#333;white-space:pre-wrap;word-break:break-word;cursor:default;overflow:hidden;position:relative;flex:1;}
 .note-el .note-body.overflowing::after{content:'…';position:absolute;bottom:4px;right:6px;background:#fff;color:#999;font-size:11px;padding-left:4px;}
-#group-label-editor input{border:none;border-radius:10px;padding:0 10px;font-size:11px;font-weight:700;font-family:'Space Grotesk','Inter',sans-serif;background:transparent;color:#fff;outline:none;box-shadow:none;caret-color:rgba(255,255,255,.8);text-align:left;height:20px;line-height:20px;}
 .group-btn-active{background:rgba(6,182,212,.18)!important;border-color:#06b6d4!important;color:#06b6d4!important}
 .note-btn-active{background:rgba(100,100,100,.14)!important;border-color:#888!important;color:#aaa!important}
 #badge{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;padding:5px 6px 5px 16px;border-radius:20px;font-size:12px;font-weight:600;display:none;white-space:nowrap;box-shadow:var(--sh2);display:none;align-items:center;gap:8px;cursor:default}
@@ -354,7 +353,6 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
     <div id="marquee"></div>
     <div id="group-marquee"></div>
     <div id="note-marquee"></div>
-    <div id="group-label-editor" style="position:absolute;display:none;z-index:601"><input id="gle-input" placeholder="Group name…" autocomplete="off"></div>
     <div id="badge"><span id="badge-txt"></span><button id="badge-del" onclick="deleteMsel()">Delete</button></div>
     <div id="cstatus"></div>
     <div id="arrow-label-editor"><input id="ale-input" placeholder="label..." /></div>
@@ -2116,55 +2114,61 @@ function deselectGroup(){
 
 function openGLE(groupId){
   var g=groups.find(function(x){return x.id===groupId;}); if(!g) return;
-  var gle=document.getElementById('gle-input');
-  var gleDiv=document.getElementById('group-label-editor');
-  gle.value=g.label||'';
-  // Size input to match pill exactly — pill starts at g.x+8, y-10, height=20
-  var LABEL_H=20, PAD=8;
-  var labelW=Math.max(60, g.label.length*7.5+PAD*2+20); // a bit wider for typing
-  var lx=(g.x+PAD)*sc+px;
-  var ly=(g.y-LABEL_H/2)*sc+py;
-  gleDiv.style.left=lx+'px';
-  gleDiv.style.top=ly+'px';
-  gleDiv.style.display='block';
-  gle.style.width=Math.max(80,labelW*sc)+'px';
-  gle.style.height=(LABEL_H*sc)+'px';
-  gle.style.fontSize=(11*sc)+'px';
-  gleDiv._gid=groupId;
-  // Hide the SVG text so input replaces it visually
-  var svgEl=document.getElementById(groupId);
-  if(svgEl){ var txt=svgEl.querySelector('text'); if(txt) txt.style.display='none'; }
-  setTimeout(function(){gle.focus();gle.select();},20);
+  var svgEl=document.getElementById(groupId); if(!svgEl) return;
+
+  // Remove any existing foreign editor
+  var existing=svgEl.querySelector('foreignObject.gle-fo');
+  if(existing) existing.remove();
+
+  var LABEL_H=20, LABEL_PAD=10;
+  var labelW=Math.max(80, g.label.length*8+LABEL_PAD*2+16);
+  var lx=g.x+8, ly=g.y-LABEL_H/2;
+
+  // Hide SVG text while editing
+  var txt=svgEl.querySelector('text');
+  if(txt) txt.style.display='none';
+
+  // Create foreignObject over the pill
+  var fo=document.createElementNS('http://www.w3.org/2000/svg','foreignObject');
+  fo.setAttribute('x', lx);
+  fo.setAttribute('y', ly);
+  fo.setAttribute('width', labelW);
+  fo.setAttribute('height', LABEL_H);
+  fo.setAttribute('class','gle-fo');
+
+  var inp=document.createElement('input');
+  inp.value=g.label||'';
+  inp.style.cssText='width:100%;height:100%;border:none;outline:none;background:transparent;'
+    +'color:#fff;font-family:Space Grotesk,Inter,sans-serif;font-weight:700;'
+    +'font-size:11px;padding:0 '+LABEL_PAD+'px;box-sizing:border-box;caret-color:#fff;';
+
+  fo.appendChild(inp);
+  svgEl.appendChild(fo);
+
+  setTimeout(function(){ inp.focus(); inp.select(); }, 20);
+
+  function commit(){
+    var val=inp.value.trim()||'Group';
+    g.label=val;
+    fo.remove();
+    if(txt) txt.style.display='';
+    renderGroup(g);
+    autoSave();
+  }
+
+  inp.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){ e.preventDefault(); commit(); }
+    if(e.key==='Escape'){ fo.remove(); if(txt) txt.style.display=''; }
+    e.stopPropagation();
+  });
+  inp.addEventListener('blur', commit);
 }
 
 function closeGLE(save){
+  // Legacy stub — inline editing handles its own lifecycle
   var gleDiv=document.getElementById('group-label-editor');
-  if(save&&gleDiv._gid){
-    var g=groups.find(function(x){return x.id===gleDiv._gid;});
-    if(g){
-      g.label=document.getElementById('gle-input').value||'Group';
-      renderGroup(g);
-      autoSave();
-    }
-  }
-  // Restore SVG text visibility
-  if(gleDiv._gid){
-    var svgEl=document.getElementById(gleDiv._gid);
-    if(svgEl){ var txt=svgEl.querySelector('text'); if(txt) txt.style.display=''; }
-  }
-  gleDiv.style.display='none';
-  gleDiv._gid=null;
+  if(gleDiv) gleDiv.style.display='none';
 }
-
-(function(){
-  var gle=document.getElementById('gle-input');
-  gle.addEventListener('keydown',function(e){
-    if(e.key==='Enter'){e.preventDefault();closeGLE(true);}
-    if(e.key==='Escape'){closeGLE(false);}
-    e.stopPropagation();
-  });
-  gle.addEventListener('blur',function(){closeGLE(true);});
-})();
 
 function addGroup(x,y,w,h,label,color){
   var id='g'+(++gid);
