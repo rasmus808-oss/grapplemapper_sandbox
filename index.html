@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>GrappleMapper</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231C1C1C'/><g transform='translate(-8.225,-5.079) scale(0.1573)' fill='none' stroke='%23fff'><path d='M 115 65 L 175 65 L 175 95 L 130 95 L 130 125 L 200 125 L 200 155 L 115 155 L 115 185 L 85 185 L 85 125 L 65 125 L 65 95 L 115 95 Z' stroke-width='14' stroke-linejoin='round'/><path d='M 140 81 L 165 81' stroke-width='7'/><path d='M 130 105 L 155 105 L 155 130 L 180 130 L 180 105 L 205 105' stroke-width='7'/><path d='M 100 180 L 125 155' stroke-width='7'/><path d='M 215 150 L 215 125' stroke-width='7'/></g><g transform='translate(-8.225,-5.079) scale(0.1573)' fill='%23fff'><rect x='122' y='72' width='18' height='18' rx='2'/><polygon points='165,77 175,81 165,85'/><polygon points='205,101 215,105 205,109'/><rect x='92' y='162' width='18' height='18' rx='2'/><polygon points='120,152 125,155 125,160'/><rect x='205' y='132' width='18' height='18' rx='2'/><polygon points='211,125 215,115 219,125'/><rect x='225' y='165' width='18' height='18' rx='2'/></g></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231C1C1C'/><g transform='translate(-8.750,-10.139) scale(0.1808)' fill='%23fff'><path d='M159.8,67.14h-36.45l-50.5,36.45v29.77h33.44v-14.05l29.42,20.4-29.42,21.07v-13.38h-45.82l-1-1v-50.17l59.87-43.14h39.8v-13.04l1-1h38.13l1,1v38.8l-1,1h-38.13c-2.41-3.52-.34-8.73-.33-12.71Z'/><polygon points='151.77 89.88 151.77 103.26 199.26 103.26 199.26 154.43 139.4 197.57 98.93 197.57 98.93 210.95 59.46 210.95 59.46 170.82 98.93 170.82 98.93 183.53 135.38 183.53 185.21 147.74 185.21 117.31 151.77 117.31 151.77 131.35 123.01 111.6 151.77 89.88'/></g></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -105,6 +105,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
 .nvframe iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none;display:block}
 /* Transparent scroll-shield — sits above iframe, passes clicks through to buttons only */
 .nvframe .scroll-shield{position:absolute;inset:0;z-index:5;cursor:default}
+@media(max-width:680px){.nvframe .scroll-shield{display:none}}
+@media(max-width:680px){.nvframe{touch-action:auto}.nvframe iframe{touch-action:auto}}
 .nvframe .nvstop{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;line-height:1}
 .nvframe .nvstop:hover{background:rgba(0,0,0,.9)}
 .nvframe .nvmute{position:absolute;top:4px;right:30px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;transition:background .15s}
@@ -153,22 +155,31 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
 
 /* mob-marquee-btn hidden on desktop */
 #mob-marquee-btn{display:none}
+/* fit icon btn hidden on desktop (shown in .zr instead) */
+button.zr-fit{display:none}
 .mob-marquee-active{background:rgba(107,70,193,.18)!important;border-color:var(--acc)!important;color:var(--acc)!important}
 
 /* ── MOBILE ── */
 @media(max-width:680px){
-  /* Topbar: shrink logo, hide title, collapse buttons */
-  .logo{width:auto!important}
+  /* Topbar: logo left, buttons pushed to right */
+  #bar{justify-content:space-between}
+  .logo{width:auto!important;flex-shrink:0}
   .logo-text{display:none}
   #ftitle{display:none}
   .sp{display:none}
-  /* Hide PDF, group, note on mobile — too crowded */
-  #bar>div>button:nth-child(4),
-  button#group-btn, button#note-btn{display:none}
-  #zpct{min-width:24px;font-size:11px}
+  /* Hide PDF, group, note, sep, zr on mobile */
+  #pdf-btn, button#group-btn, button#note-btn, .sep, .zr{display:none}
+  /* Marquee btn visible */
+  #mob-marquee-btn{display:flex}
+  /* Fit icon btn: show on mobile */
+  button.zr-fit{display:flex!important}
+  /* Hide text fit in zr */
+  .zr-fit-text{display:none}
+  /* Bigger delete button on touch */
+  .delbtn{width:26px;height:26px;font-size:14px;top:-10px;left:-10px}
+  .icon-btn{width:38px;height:38px}
   #layout{flex-direction:column}
   #wrap{position:fixed;top:50px;left:0;right:0;bottom:40px;touch-action:none}
-  /* Sidebar: fixed, bottom-anchored, 40px collapsed (handle), grows up */
   #sb{
     position:fixed;bottom:0;left:0;right:0;width:100%!important;
     height:40px;border-right:none;overflow:hidden;z-index:400;
@@ -176,7 +187,6 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
     transition:height .3s cubic-bezier(.4,0,.2,1)
   }
   #sb.sb-open{height:65vh}
-  /* Handle is first child of sb — always visible as the 40px strip */
   #drag-handle{
     display:flex!important;align-items:center;justify-content:center;
     height:40px;flex-shrink:0;
@@ -189,10 +199,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
   #sb.sb-editing #sb-scroll>.ss,
   #sb.sb-editing #sb-scroll>div.ss{display:none}
   #sb.sb-editing #detail{display:block!important}
-  #mob-marquee-btn{display:flex}
-  /* Bigger delete button on touch */
-  .delbtn{width:26px;height:26px;font-size:14px;top:-10px;left:-10px}
-  .icon-btn{width:38px;height:38px}
+  /* detail is inline in sb-scroll — no special mobile positioning needed */
   .node{touch-action:none}
 }
 @media(max-width:440px){
@@ -207,31 +214,9 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
   <!-- Mobile sidebar toggle (hidden on desktop via CSS) -->
   <div class="logo">
     <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g transform="translate(-7.494,-4.573) scale(0.1461)">
-        <!-- Outer flow path -->
-        <path d="M 115 65 L 175 65 L 175 95 L 130 95 L 130 125 L 200 125 L 200 155 L 115 155 L 115 185 L 85 185 L 85 125 L 65 125 L 65 95 L 115 95 Z"
-              fill="none" stroke="#fff" stroke-width="14" stroke-linejoin="round"/>
-        <!-- Top-left node -->
-        <rect x="122" y="72" width="18" height="18" rx="2" fill="#fff"/>
-        <!-- Top arrow shaft + head -->
-        <path d="M 140 81 L 165 81" stroke="#fff" stroke-width="7"/>
-        <polygon points="165,77 175,81 165,85" fill="#fff"/>
-        <!-- Middle zig-zag + arrow -->
-        <path d="M 130 105 L 155 105 L 155 130 L 180 130 L 180 105 L 205 105"
-              stroke="#fff" stroke-width="7" fill="none"/>
-        <polygon points="205,101 215,105 205,109" fill="#fff"/>
-        <!-- Bottom-left node -->
-        <rect x="92" y="162" width="18" height="18" rx="2" fill="#fff"/>
-        <!-- Diagonal arrow -->
-        <path d="M 100 180 L 125 155" stroke="#fff" stroke-width="7"/>
-        <polygon points="120,152 125,155 125,160" fill="#fff"/>
-        <!-- Right-side node -->
-        <rect x="205" y="132" width="18" height="18" rx="2" fill="#fff"/>
-        <!-- Upward arrow -->
-        <path d="M 215 150 L 215 125" stroke="#fff" stroke-width="7"/>
-        <polygon points="211,125 215,115 219,125" fill="#fff"/>
-        <!-- Bottom-right node -->
-        <rect x="225" y="165" width="18" height="18" rx="2" fill="#fff"/>
+      <g transform="translate(-8.750,-10.139) scale(0.1808)" fill="#fff">
+        <path d="M159.8,67.14h-36.45l-50.5,36.45v29.77h33.44v-14.05l29.42,20.4-29.42,21.07v-13.38h-45.82l-1-1v-50.17l59.87-43.14h39.8v-13.04l1-1h38.13l1,1v38.8l-1,1h-38.13c-2.41-3.52-.34-8.73-.33-12.71Z"/>
+        <polygon points="151.77 89.88 151.77 103.26 199.26 103.26 199.26 154.43 139.4 197.57 98.93 197.57 98.93 210.95 59.46 210.95 59.46 170.82 98.93 170.82 98.93 183.53 135.38 183.53 185.21 147.74 185.21 117.31 151.77 117.31 151.77 131.35 123.01 111.6 151.77 89.88"/>
       </g>
     </svg>
     GrappleMapper <span class="logo-text" style="font-size:11px;font-weight:500;color:var(--dmut);letter-spacing:0;font-family:'Inter',sans-serif">v4.8</span>
@@ -253,7 +238,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
   </button>
   <input type="file" id="load-input" accept=".gmap,.json,application/json,text/plain" style="display:none" onchange="loadMap(this)">
   <!-- PDF Export -->
-  <button class="icon-btn" onclick="exportPDF()" title="Export as PDF">
+  <button class="icon-btn" id="pdf-btn" onclick="exportPDF()" title="Export as PDF">
     <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
   </button>
   <!-- Group -->
@@ -268,13 +253,17 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:1
   <button class="icon-btn" id="mob-marquee-btn" onclick="toggleMobMarquee()" title="Select area" style="display:none">
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4,2.5" fill="none"/><polyline points="9 9 9 15 15 15"/></svg>
   </button>
+  <!-- Fit — always visible, moves into button group on mobile -->
+  <button class="icon-btn zr-fit" onclick="fitView()" title="Fit view">
+    <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+  </button>
   </div>
   <div class="sep"></div>
   <div class="zr">
     <button onclick="zBy(-.12)">&#8722;</button>
     <span id="zpct">100%</span>
     <button onclick="zBy(.12)">+</button>
-    <button class="zr-fit" onclick="fitView()" style="font-size:11px;width:auto;padding:0 8px">fit</button>
+    <button onclick="fitView()" style="font-size:11px;width:auto;padding:0 8px" class="zr-fit-text">fit</button>
   </div>
 </div>
 <div id="layout">
@@ -3019,6 +3008,7 @@ function loadTmpl(name){
   var _touchDragId=null, _touchDragOff={x:0,y:0}, _touchDragging=false;
   var _touchPanSt=null, _panMoved=false;
   var _longPressTimer=null, _longPressFired=false;
+  var _touchStartEl=null;
 
   function tdist(t1,t2){ return Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY); }
 
@@ -3060,6 +3050,8 @@ function loadTmpl(name){
     var t=ts[0], now=Date.now();
 
     var tgt=document.elementFromPoint(t.clientX,t.clientY);
+    // If touching a playing video frame — let browser/iframe handle it natively
+    if(tgt&&(tgt.closest('.nvframe')||tgt.closest('.scroll-shield'))) return;
     var nodeDiv=tgt&&tgt.closest('.node');
 
     // Double-tap detection
@@ -3086,6 +3078,7 @@ function loadTmpl(name){
       _touchDragId=id;
       _touchDragOff={x:c.x-nodes[id].x, y:c.y-nodes[id].y};
       _touchDragging=false;
+      _touchStartEl=tgt; // remember what element was touched
       // Long-press → open edit panel
       _longPressTimer=setTimeout(function(){
         _longPressFired=true;
@@ -3160,15 +3153,42 @@ function loadTmpl(name){
     _pinchDist=null;
     if(_touchDragId){
       if(!_touchDragging&&!_longPressFired){
-        // Single tap on node
         var id=_touchDragId;
-        if(armed&&armed!==id){ snapshotForUndo(); addArrow(armed,id); disarm(); }
-        else if(armed===id){ disarm(); }
-        else { arm(id); }
+        // Check if tap was on video thumbnail → play it
+        var onThumb=_touchStartEl&&_touchStartEl.closest('.nvthumb');
+        var onStop=_touchStartEl&&_touchStartEl.closest('.nvstop');
+        var onDelbtn=_touchStartEl&&_touchStartEl.classList&&_touchStartEl.classList.contains('delbtn');
+        if(onDelbtn){
+          // tapped the × button — delete
+          snapshotForUndo(); delNode(id);
+        } else if(onThumb){
+          // tapped thumbnail — play video
+          var igId=parseIG(nodes[id].url);
+          if(igId){ window.open('https://www.instagram.com/p/'+igId+'/', '_blank'); }
+          else if(parseFB(nodes[id].url)){ window.open(nodes[id].url, '_blank'); }
+          else {
+            var elNow=document.getElementById(id);
+            if(elNow) nodes[id].prePlayW=nodes[id].w||190;
+            nodes[id].prePlayH=nodes[id].h||120;
+            nodes[id].playing=true;
+            refreshNode(id);
+            setTimeout(function(){var el2=document.getElementById(id);if(el2){nodes[id].h=el2.offsetHeight||120;redrawArrows();}},100);
+          }
+        } else if(onStop){
+          nodes[id].playing=false;
+          if(nodes[id].prePlayW) nodes[id].w=nodes[id].prePlayW;
+          refreshNode(id);
+          setTimeout(function(){var el2=document.getElementById(id);if(el2){nodes[id].h=el2.offsetHeight||120;redrawArrows();}},100);
+        } else {
+          // Normal single tap — arm/connect
+          if(armed&&armed!==id){ snapshotForUndo(); addArrow(armed,id); disarm(); }
+          else if(armed===id){ disarm(); }
+          else { arm(id); }
+        }
       } else if(_touchDragging){
         autoSave();
       }
-      _touchDragId=null; _touchDragging=false;
+      _touchDragId=null; _touchDragging=false; _touchStartEl=null;
       _touchPanSt=null; _panMoved=false;
       return;
     }
