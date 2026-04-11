@@ -28,7 +28,6 @@ self.addEventListener('activate', function(e) {
 
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
-  // Network-first for external APIs (YouTube oEmbed, IG, fonts)
   if (url.includes('youtube.com') || url.includes('googleapis.com') ||
       url.includes('instagram.com') || url.includes('facebook.com') ||
       url.includes('google.com/oembed')) {
@@ -39,7 +38,6 @@ self.addEventListener('fetch', function(e) {
     );
     return;
   }
-  // Cache-first for app shell
   e.respondWith(
     caches.match(e.request).then(function(cached) {
       return cached || fetch(e.request).then(function(resp) {

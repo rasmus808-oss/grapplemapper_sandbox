@@ -5,8 +5,8 @@
   "start_url": "/grapplemapper/",
   "scope": "/grapplemapper/",
   "display": "standalone",
-  "orientation": "landscape",
-  "background_color": "#3e3c39",
+  "orientation": "any",
+  "background_color": "#1C1C1C",
   "theme_color": "#3e3c39",
   "icons": [
     { "src": "icons/icon-72.png",  "sizes": "72x72",   "type": "image/png" },
